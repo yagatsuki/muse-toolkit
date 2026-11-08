@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title or "対象商品 特価・セールチェック" }} - {{ date }}</title>
+<style>
+  body { font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+         margin: 0; background: #f6f6f4; color: #1c1c1a; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 16px 12px 40px; }
+  h1 { font-size: 19px; margin: 8px 0 2px; }
+  .date { color: #666; font-size: 13px; margin-bottom: 16px; }
+  .card { display: flex; gap: 12px; background: #fff; border: 1px solid #e2e2dc;
+          border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+  .card img { width: 110px; height: 110px; object-fit: contain;
+              background: #fafafa; border-radius: 6px; flex: none; }
+  .noimg { width: 110px; height: 110px; flex: none; display: flex;
+           align-items: center; justify-content: center; background: #f0f0ec;
+           color: #999; font-size: 12px; border-radius: 6px; }
+  .body { min-width: 0; flex: 1; }
+  .brand { font-size: 12px; color: #2b6cb0; font-weight: 600; }
+  .name { font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .listprice { color: #888; font-size: 12px; margin-top: 2px; }
+  table.offers { width: 100%; border-collapse: collapse; margin-top: 8px;
+                 font-size: 13px; }
+  table.offers th, table.offers td { text-align: left; padding: 5px 6px;
+                 border-top: 1px solid #eee; vertical-align: top; }
+  table.offers th { color: #666; font-weight: 600; font-size: 12px;
+                 border-top: none; }
+  .store a { color: #2b6cb0; text-decoration: none; font-weight: 600; }
+  .store a:hover { text-decoration: underline; }
+  .price { font-weight: 700; white-space: nowrap; }
+  .off { display: inline-block; background: #c53030; color: #fff;
+         border-radius: 4px; padding: 0 6px; font-size: 12px;
+         font-weight: 700; white-space: nowrap; }
+  .total { white-space: nowrap; color: #444; }
+  .stock { white-space: nowrap; }
+  .note { font-size: 12px; color: #666; }
+  .foot { color: #888; font-size: 12px; margin-top: 18px; line-height: 1.6; }
+  .zoomable { cursor: zoom-in; }
+  .lb { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88);
+        z-index: 50; align-items: center; justify-content: center; }
+  .lb img { max-width: 94vw; max-height: 88vh; object-fit: contain;
+            background: #fff; border-radius: 6px; }
+  .lb-close { position: absolute; top: 10px; right: 10px; width: 44px;
+              height: 44px; border: none; border-radius: 50%;
+              background: rgba(255,255,255,.92); color: #222;
+              font-size: 24px; line-height: 1; cursor: pointer; }
+  @media (max-width: 600px) {
+    .card { flex-direction: column; gap: 8px; }
+    .card img, .noimg { width: 84px; height: 84px; }
+    table.offers tr:first-child { display: none; }
+    table.offers tr { display: block; padding: 6px 0; }
+    table.offers tr + tr { border-top: 1px solid #eee; }
+    table.offers td { display: block; border-top: none; padding: 2px 0; }
+    td.total::before { content: "送料込み総額："; color: #666; font-size: 12px; }
+    td.stock::before { content: "在庫："; color: #666; font-size: 12px; }
+    .stock, .total { white-space: normal; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>{{ title or "対象商品 特価・セールチェック" }}</h1>
+  <div class="date">{{ date }}（確認時点の価格）</div>
+  {% for p in products %}
+  <div class="card">
+    {% if p.image_url %}<img class="zoomable" src="{{ p.image_url }}" alt="" loading="lazy">{% else %}<div class="noimg">画像なし</div>{% endif %}
+    <div class="body">
+      {% if p.brand %}<div class="brand">{{ p.brand }}</div>{% endif %}
+      <div class="name">{{ p.name }}</div>
+      {% if p.list_price %}<div class="listprice">定価 {{ p.list_price | yen }}</div>{% endif %}
+      <table class="offers">
+        <tr><th>店舗</th><th>価格</th><th>送料込み総額</th><th>在庫</th></tr>
+        {% for o in p.offers %}
+        <tr>
+          <td class="store"><a href="{{ o.url }}">{{ o.store }}</a>
+            {% if o.note %}<div class="note">{{ o.note }}</div>{% endif %}</td>
+          <td><span class="price">{{ o.price | yen }}</span>
+            {% if o.discount_pct is not none %} <span class="off">{{ o.discount_pct }}% OFF</span>{% endif %}</td>
+          <td class="total">{{ o.total | yen }}{% if o.shipping %}<div class="note">送料 {{ o.shipping | yen }} 込み</div>{% elif o.shipping == 0 %}<div class="note">送料無料</div>{% endif %}</td>
+          <td class="stock">{{ o.stock or "" }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+  <p class="foot">送料込み総額は単品購入時の金額です。ShopE web は送料無料扱いで計算しています。</p>
+</div>
+<div class="lb" id="lb"><button class="lb-close" aria-label="閉じる">×</button><img id="lbimg" alt=""></div>
+<script>
+(function(){
+  var lb=document.getElementById('lb'), im=document.getElementById('lbimg');
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(t.classList&&t.classList.contains('zoomable')){ im.src=t.src; lb.style.display='flex'; }
+    else if(t===lb||(t.classList&&t.classList.contains('lb-close'))){ lb.style.display='none'; im.removeAttribute('src'); }
+  });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ lb.style.display='none'; } });
+})();
+</script>
+</body>
+</html>

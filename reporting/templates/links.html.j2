@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} - {{ date }}</title>
+<style>
+  body { font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+         margin: 0; background: #f6f6f4; color: #1c1c1a; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 16px 12px 40px; }
+  h1 { font-size: 19px; margin: 8px 0 2px; }
+  .date { color: #666; font-size: 13px; margin-bottom: 16px; }
+  h2 { font-size: 16px; margin: 22px 0 10px; padding-left: 8px;
+       border-left: 4px solid #2b6cb0; }
+  ul.items { list-style: none; margin: 0; padding: 0; }
+  ul.items li { background: #fff; border: 1px solid #e2e2dc;
+                border-radius: 8px; padding: 9px 12px; margin-bottom: 8px; }
+  .name { font-size: 15px; font-weight: 600; }
+  .name a { color: #2b6cb0; text-decoration: none; }
+  .name a:hover { text-decoration: underline; }
+  .meta { font-size: 13px; color: #444; margin-left: 8px; }
+  .note { font-size: 12.5px; color: #666; margin-top: 3px; line-height: 1.55; }
+  .sublinks { margin-top: 4px; font-size: 12.5px; line-height: 1.9; }
+  .sublinks a { color: #2b6cb0; text-decoration: none; margin-right: 10px;
+                word-break: break-all; }
+  .sublinks a:hover { text-decoration: underline; }
+  .intro { font-size: 13.5px; color: #333; line-height: 1.7; margin-bottom: 6px;
+           white-space: pre-wrap; }
+  .empty { color: #666; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>{{ title }}</h1>
+  <div class="date">{{ date }}</div>
+  {% if intro %}<p class="intro">{{ intro }}</p>{% endif %}
+  {% for sec in sections %}
+  <h2>{{ sec.heading }}</h2>
+  {% if sec["items"] %}
+  <ul class="items">
+    {% for it in sec["items"] %}
+    <li>
+      <span class="name">{% if it.url %}<a href="{{ it.url }}">{{ it.name }}</a>{% else %}{{ it.name }}{% endif %}</span>{% if it.meta %}<span class="meta">{{ it.meta }}</span>{% endif %}
+      {% if it.note %}<div class="note">{{ it.note }}</div>{% endif %}
+      {% if it.links %}<div class="sublinks">{% for l in it.links %}<a href="{{ l.url }}">{{ l.label }}</a>{% endfor %}</div>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p class="empty">なし</p>
+  {% endif %}
+  {% endfor %}
+</div>
+</body>
+</html>

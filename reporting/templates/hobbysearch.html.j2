@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title or "SHOP_B 対象 予約・発売チェック" }} - {{ date }}</title>
+<style>
+  body { font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+         margin: 0; background: #f6f6f4; color: #1c1c1a; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 16px 12px 40px; }
+  h1 { font-size: 19px; margin: 8px 0 2px; }
+  .date { color: #666; font-size: 13px; margin-bottom: 16px; }
+  h2 { font-size: 16px; margin: 22px 0 10px; padding-left: 8px;
+       border-left: 4px solid #2b6cb0; }
+  .card { display: flex; gap: 12px; background: #fff; border: 1px solid #e2e2dc;
+          border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  .card img { width: 110px; height: 110px; object-fit: contain;
+              background: #fafafa; border-radius: 6px; flex: none; }
+  .noimg { width: 110px; height: 110px; flex: none; display: flex;
+           align-items: center; justify-content: center; background: #f0f0ec;
+           color: #999; font-size: 12px; border-radius: 6px; }
+  .body { min-width: 0; }
+  .brand { font-size: 12px; color: #2b6cb0; font-weight: 600; }
+  .name { font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .name a { color: inherit; text-decoration: none; }
+  .name a:hover { text-decoration: underline; }
+  .meta { font-size: 13px; color: #444; margin-top: 4px; line-height: 1.6; }
+  .price { font-size: 16px; font-weight: 700; color: #b7791f; }
+  .listprice { color: #888; font-size: 12px; }
+  .note { font-size: 12px; color: #666; margin-top: 2px; }
+  .empty { color: #666; font-size: 14px; }
+  .zoomable { cursor: zoom-in; }
+  .lb { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88);
+        z-index: 50; align-items: center; justify-content: center; }
+  .lb img { max-width: 94vw; max-height: 88vh; object-fit: contain;
+            background: #fff; border-radius: 6px; }
+  .lb-close { position: absolute; top: 10px; right: 10px; width: 44px;
+              height: 44px; border: none; border-radius: 50%;
+              background: rgba(255,255,255,.92); color: #222;
+              font-size: 24px; line-height: 1; cursor: pointer; }
+  @media (max-width: 600px) {
+    .card img, .noimg { width: 84px; height: 84px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>{{ title or "SHOP_B 対象 予約・発売チェック" }}</h1>
+  <div class="date">{{ date }}{% if baseline_date %}（前回基準: {{ baseline_date }}）{% endif %}</div>
+  {% for sec in sections %}
+  <h2>{{ sec.heading }}</h2>
+  {% if sec["items"] %}
+    {% for it in sec["items"] %}
+    <div class="card">
+      {% if it.image_url %}<img class="zoomable" src="{{ it.image_url }}" alt="" loading="lazy">{% else %}<div class="noimg">画像なし</div>{% endif %}
+      <div class="body">
+        {% if it.brand %}<div class="brand">{{ it.brand }}</div>{% endif %}
+        <div class="name"><a href="{{ it.url }}">{{ it.name }}</a></div>
+        <div class="meta">
+          {% if it.price %}<span class="price">{{ it.price | yen }}</span>{% endif %}
+          {% if it.list_price %}<span class="listprice">定価 {{ it.list_price | yen }}</span>{% endif %}
+          {% if it.release %}<br>発売: {{ it.release }}{% endif %}
+          {% if it.status %}<br>{{ it.status }}{% endif %}
+        </div>
+        {% if it.note %}<div class="note">{{ it.note }}</div>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="empty">なし</p>
+  {% endif %}
+  {% endfor %}
+</div>
+<div class="lb" id="lb"><button class="lb-close" aria-label="閉じる">×</button><img id="lbimg" alt=""></div>
+<script>
+(function(){
+  var lb=document.getElementById('lb'), im=document.getElementById('lbimg');
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(t.classList&&t.classList.contains('zoomable')){ im.src=t.src; lb.style.display='flex'; }
+    else if(t===lb||(t.classList&&t.classList.contains('lb-close'))){ lb.style.display='none'; im.removeAttribute('src'); }
+  });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ lb.style.display='none'; } });
+})();
+</script>
+</body>
+</html>
