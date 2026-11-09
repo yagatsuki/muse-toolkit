@@ -63,14 +63,36 @@ def main():
     for sub, label, rel in TYPES:
         items = collect(sub, os.path.join(HOME, rel))
         total += len(items)
-        lis = "\n".join(
-            f'      <li><a href="{href}">{date} のレポート</a></li>'
-            for date, href in items
-        ) or '      <li class="empty">まだレポートがありません</li>'
+        def li(date, href, cls=""):
+            return f'      <li{cls}><a href="{href}">{date} のレポート</a></li>'
+
+        if not items:
+            body = ('    <ul>\n'
+                    '      <li class="empty">まだレポートがありません</li>\n'
+                    '    </ul>')
+        elif len(items) <= 3:
+            lis = "\n".join(li(d, h) for d, h in items)
+            body = f'    <ul>\n{lis}\n    </ul>'
+        else:
+            head, rest = items[:3], items[3:]
+            lis_head = "\n".join(
+                li(d, h, ' class="peek"' if i == 2 else "")
+                for i, (d, h) in enumerate(head)
+            )
+            lis_rest = "\n".join(li(d, h) for d, h in rest)
+            body = (
+                f'    <ul>\n{lis_head}\n    </ul>\n'
+                f'    <div class="more" id="more-{sub}">\n'
+                f'    <ul>\n{lis_rest}\n    </ul>\n'
+                f'    </div>\n'
+                f'    <button class="toggle" data-target="more-{sub}" '
+                f'data-more="もっと見る（残り{len(rest)}件）" '
+                f'data-less="閉じる">もっと見る（残り{len(rest)}件）</button>'
+            )
         sections.append(
             f'  <section id="{sub}">\n'
             f'    <h2>{label}</h2>\n'
-            f'    <ul>\n{lis}\n    </ul>\n'
+            f'{body}\n'
             f'  </section>'
         )
     now = datetime.now().strftime("%Y-%m-%d")
@@ -91,6 +113,12 @@ def main():
   .empty {{ color: #888; }}
   .updated {{ color: #666; font-size: 13px; }}
   nav a {{ margin-right: 12px; }}
+  .peek {{ opacity: 0.45; transition: opacity 0.3s ease; }}
+  section.open .peek {{ opacity: 1; }}
+  .more {{ max-height: 0; overflow: hidden; transition: max-height 0.45s ease; }}
+  .toggle {{ background: none; border: 1px solid #ccc; border-radius: 6px;
+             padding: 4px 12px; font-size: 14px; color: #0b5cad;
+             cursor: pointer; margin: 2px 0 10px 4px; }}
 </style>
 </head>
 <body>
@@ -100,6 +128,17 @@ def main():
   <a href="#bargain">特価</a><a href="#shop_b">予約・発売</a><a href="#platform_e">PlatformE</a><a href="#platform_a">PlatformA</a><a href="#platform_d">PlatformD</a><a href="#x">X</a>
 </nav>
 {chr(10).join(sections)}
+<script>
+document.querySelectorAll('.toggle').forEach(function (btn) {{
+  btn.addEventListener('click', function () {{
+    var box = document.getElementById(btn.dataset.target);
+    var open = box.style.maxHeight && box.style.maxHeight !== '0px';
+    box.style.maxHeight = open ? '0px' : box.scrollHeight + 'px';
+    btn.textContent = open ? btn.dataset.more : btn.dataset.less;
+    btn.closest('section').classList.toggle('open', !open);
+  }});
+}});
+</script>
 </body>
 </html>
 """

@@ -65,15 +65,25 @@ def words(pdf_path):
 
 
 def lines_from_words(ws):
-    ws = sorted(ws, key=lambda w: (round(w[1] / 4), w[0]))
-    lines = []
-    for w in ws:
+    # Visual lines: single-linkage clustering on y-center (gap <= 5pt).
+    # Within one visual line, mixed fonts/brackets shift words by ~2pt,
+    # while visual lines are ~9pt apart. The old code compared each word
+    # against the line's FIRST word, which split lines at brackets
+    # (their y-center sits ~9pt off the line's first word).
+    ordered = sorted(ws, key=lambda w: ((w[1] + w[3]) / 2, w[0]))
+    clusters = []
+    for w in ordered:
         yc = (w[1] + w[3]) / 2
-        if lines and abs(lines[-1][0] - yc) < 5:
-            lines[-1][1] += " " + w[4]
+        if clusters and yc - clusters[-1][-1][0] <= 5:
+            clusters[-1].append((yc, w))
         else:
-            lines.append([yc, w[4]])
-    return [(yc, t) for yc, t in lines]
+            clusters.append([(yc, w)])
+    out = []
+    for cl in clusters:
+        cl.sort(key=lambda t: t[1][0])
+        yc = sum(t[0] for t in cl) / len(cl)
+        out.append((yc, " ".join(t[1][4] for t in cl)))
+    return out
 
 
 def collect_card_lines(pdf_path):
@@ -152,6 +162,19 @@ def parse_card(card):
             if not new_price:
                 new_price = yen(t)
             break
+    if not new_price:
+        # タイムセール非開催時はカードが「新品：￥ 税込 B」の1行表示に
+        # なる（B は「税込」の後に置かれるため、行内の最初の数字を取る）。
+        # 「(N 点の新品)」はマケプレの在庫表示で価格ではないため、
+        # ￥を含む行だけを対象にする。
+        for i, t in enumerate(lines):
+            if "新品" in t and "通常価格" not in t and ("￥" in t or "¥" in t):
+                m = re.search(r"([\d,]+)", t)
+                if not m and i + 1 < len(lines) and ("￥" in lines[i + 1] or "税込" in lines[i + 1]):
+                    m = re.search(r"([\d,]+)", lines[i + 1])
+                if m:
+                    new_price = m.group(1)
+                break
     used_price = ""
     m = re.search(r"中古[：:]?\s*[¥￥]\s*([\d,]+)\s*税込", blob)
     if m:
