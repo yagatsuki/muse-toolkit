@@ -64,7 +64,9 @@ def main():
         items = collect(sub, os.path.join(HOME, rel))
         total += len(items)
         def li(date, href, cls=""):
-            return f'      <li{cls}><a href="{href}">{date} のレポート</a></li>'
+            return (f'      <li{cls}><input type="checkbox" class="rep-check" '
+                    f'data-id="{href}" disabled> '
+                    f'<a href="{href}">{date} のレポート</a></li>')
 
         if not items:
             body = ('    <ul>\n'
@@ -95,6 +97,18 @@ def main():
             f'{body}\n'
             f'  </section>'
         )
+    veh_dir = os.path.join(SITE, "vehicles")
+    veh_lis_items = []
+    if os.path.isdir(veh_dir):
+        dated = [f for f in os.listdir(veh_dir)
+                 if re.fullmatch(r"selection_\d{4}-\d{2}-\d{2}\.html", f)]
+        for f in sorted(dated, reverse=True):
+            d = f[len("selection_"):-len(".html")]
+            veh_lis_items.append(
+                f'      <li><a href="vehicles/{f}">選別ページ（{d}分）</a></li>')
+    veh_lis_items.append(
+        '      <li><a href="vehicles/selection.html">選別ページ（初回収集分）</a></li>')
+    veh_lis = "\n".join(veh_lis_items)
     now = datetime.now().strftime("%Y-%m-%d")
     html = f"""<!DOCTYPE html>
 <html lang="ja">
@@ -119,15 +133,24 @@ def main():
   .toggle {{ background: none; border: 1px solid #ccc; border-radius: 6px;
              padding: 4px 12px; font-size: 14px; color: #0b5cad;
              cursor: pointer; margin: 2px 0 10px 4px; }}
+  .rep-check {{ width: 16px; height: 16px; vertical-align: -2px; }}
+  li.done a {{ color: #888; text-decoration: line-through; }}
 </style>
 </head>
 <body>
 <h1>日次レポート集約</h1>
 <p class="updated">全{total}件・更新: {now}（保持期間30日。古いレポートは自動削除されます）</p>
+<p class="updated">チェックは自動で保存され、どの端末からでも同じ状態が見られます。</p>
 <nav>
-  <a href="#bargain">特価</a><a href="#shop_b">予約・発売</a><a href="#platform_e">PlatformE</a><a href="#platform_a">PlatformA</a><a href="#platform_d">PlatformD</a><a href="#x">X</a>
+  <a href="#bargain">特価</a><a href="#shop_b">予約・発売</a><a href="#platform_e">PlatformE</a><a href="#platform_a">PlatformA</a><a href="#platform_d">PlatformD</a><a href="#x">X</a><a href="#vehicles">Vehicles選別</a>
 </nav>
 {chr(10).join(sections)}
+  <section id="vehicles">
+    <h2>Vehicles MOD 選別</h2>
+    <ul>
+{veh_lis}
+    </ul>
+  </section>
 <script>
 document.querySelectorAll('.toggle').forEach(function (btn) {{
   btn.addEventListener('click', function () {{
@@ -138,6 +161,24 @@ document.querySelectorAll('.toggle').forEach(function (btn) {{
     btn.closest('section').classList.toggle('open', !open);
   }});
 }});
+var CHECK_API = 'https://muse-reports-check.WORKER_DOMAIN';
+fetch(CHECK_API + '/state').then(function (r) {{ return r.json(); }}).then(function (state) {{
+  document.querySelectorAll('.rep-check').forEach(function (cb) {{
+    var on = !!state[cb.dataset.id];
+    cb.checked = on;
+    cb.closest('li').classList.toggle('done', on);
+    cb.disabled = false;
+  }});
+}}).catch(function () {{}});
+document.querySelectorAll('.rep-check').forEach(function (cb) {{
+  cb.addEventListener('change', function () {{
+    cb.closest('li').classList.toggle('done', cb.checked);
+    fetch(CHECK_API + '/toggle', {{ method: 'POST',
+      headers: {{ 'Content-Type': 'application/json' }},
+      body: JSON.stringify({{ id: cb.dataset.id, checked: cb.checked }})
+    }}).catch(function () {{}});
+  }});
+}});
 </script>
 </body>
 </html>
@@ -146,6 +187,8 @@ document.querySelectorAll('.toggle').forEach(function (btn) {{
         f.write(html)
     with open(os.path.join(SITE, "robots.txt"), "w", encoding="utf-8") as f:
         f.write("User-agent: *\nDisallow: /\n")
+    with open(os.path.join(SITE, "_headers"), "w", encoding="utf-8") as f:
+        f.write("/*\n  X-Robots-Tag: noindex\n")
     print(f"hub built: {total} reports -> {SITE}/index.html")
     return 0
 
