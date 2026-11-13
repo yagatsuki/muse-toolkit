@@ -23,8 +23,6 @@ TYPES = [
      "workspace/goals/goal_a/files"),
     ("shop_b", "予約・発売チェック（SHOP_B）",
      "workspace/goals/goal_b/files"),
-    ("platform_e", "PlatformE 注目投稿の探索",
-     "workspace/goals/goal_e/files"),
     ("platform_a", "PlatformA 紹介",
      "workspace/goals/goal_c/files"),
     ("platform_d", "PlatformD 紹介",
@@ -33,7 +31,7 @@ TYPES = [
      "workspace/goals/goal_f/files"),
 ]
 
-DATE_RE = re.compile(r"report_(\d{4}-\d{2}-\d{2})\.html$")
+DATE_RE = re.compile(r"report_(\d{4}-\d{2}-\d{2})(?:_(\d{4}))?\.html$")
 
 
 def collect(sub, src_dir):
@@ -51,7 +49,10 @@ def collect(sub, src_dir):
             if not m:
                 continue
             shutil.copy2(os.path.join(src_dir, f), os.path.join(dest, f))
-            items.append((m.group(1), f"{sub}/{f}"))
+            label = m.group(1)
+            if m.group(2):
+                label += f" {m.group(2)[:2]}:{m.group(2)[2:]}"
+            items.append((label, f"{sub}/{f}"))
     items.sort(reverse=True)
     return items
 
@@ -142,7 +143,7 @@ def main():
 <p class="updated">全{total}件・更新: {now}（保持期間30日。古いレポートは自動削除されます）</p>
 <p class="updated">チェックは自動で保存され、どの端末からでも同じ状態が見られます。</p>
 <nav>
-  <a href="#bargain">特価</a><a href="#shop_b">予約・発売</a><a href="#platform_e">PlatformE</a><a href="#platform_a">PlatformA</a><a href="#platform_d">PlatformD</a><a href="#x">X</a><a href="#vehicles">Vehicles選別</a>
+  <a href="#bargain">特価</a><a href="#shop_b">予約・発売</a><a href="#platform_a">PlatformA</a><a href="#platform_d">PlatformD</a><a href="#x">X</a><a href="#vehicles">Vehicles選別</a>
 </nav>
 {chr(10).join(sections)}
   <section id="vehicles">
