@@ -12,6 +12,7 @@ Muse（個人用AIエージェント）の日々の作業から生まれた、�
 - `reporting/` — JSONからHTMLレポートを生成するレンダラ（Jinja2）と、日付別のレポートを1つの索引ページに集約するビルダー
 - `hooks/upstream-update-check.sh` — gitリモートの更新をポーリングし、新しいコミットがあるときだけエージェントを起こすパターン
 - `image/trim-transparent-pixels.py` — 画像の透明な余白を、内容のある範囲いっぱいに切り取るツール。ブラウザ上の同種ツールの方式に合わせ、背景除去で生じる微小なα値のノイズを透明として掃除してから切り取ります
+- `image/finish-image.py` — 商品写真の仕上げを1本にしたもの。背景除去（rembg）→透明余白の切り取り→可逆WebP化までを通しで行います
 
 ## 補足
 
@@ -27,8 +28,10 @@ Worker that turns web pages into structured records or clean body text,
 "PDF method" extractors that recover structured rows from a printed listing
 page by pairing positioned text with link annotations, a JSON-listing
 recovery script, a JSON → HTML report renderer with a hub index builder,
-a git-remote update watcher hook, and an image trimmer that crops
-transparent borders to the content bounds (cleaning near-zero alpha noise
-left by background removers first). Site-specific values are replaced
+a git-remote update watcher hook, and image finishing tools: a trimmer
+that crops transparent borders to the content bounds (cleaning near-zero
+alpha noise left by background removers first), and a one-pass finisher
+(background removal via rembg, then trim, then lossless WebP).
+Site-specific values are replaced
 with placeholders, so these are reference implementations of the techniques
 rather than drop-in runnable copies. License: MIT.
