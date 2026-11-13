@@ -11,6 +11,7 @@ Muse（個人用AIエージェント）の日々の作業から生まれた、�
 - `collect/pdf-listing.py` — 同じ考え方をJSONに適用したもの。PDFに印刷されたJSON一覧を、元の構造化データに戻します
 - `reporting/` — JSONからHTMLレポートを生成するレンダラ（Jinja2）と、日付別のレポートを1つの索引ページに集約するビルダー
 - `hooks/upstream-update-check.sh` — gitリモートの更新をポーリングし、新しいコミットがあるときだけエージェントを起こすパターン
+- `image/trim-transparent-pixels.py` — 画像の透明な余白を、内容のある範囲いっぱいに切り取るツール。ブラウザ上の同種ツールの方式に合わせ、背景除去で生じる微小なα値のノイズを透明として掃除してから切り取ります
 
 ## 補足
 
@@ -26,6 +27,8 @@ Worker that turns web pages into structured records or clean body text,
 "PDF method" extractors that recover structured rows from a printed listing
 page by pairing positioned text with link annotations, a JSON-listing
 recovery script, a JSON → HTML report renderer with a hub index builder,
-and a git-remote update watcher hook. Site-specific values are replaced
+a git-remote update watcher hook, and an image trimmer that crops
+transparent borders to the content bounds (cleaning near-zero alpha noise
+left by background removers first). Site-specific values are replaced
 with placeholders, so these are reference implementations of the techniques
 rather than drop-in runnable copies. License: MIT.
