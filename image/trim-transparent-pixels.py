@@ -29,7 +29,10 @@ def main():
     if threshold > 0:
         alpha = im.getchannel('A').point(lambda a: 0 if a <= threshold else a)
         im.putalpha(alpha)
-    bbox = im.getchannel('A').getbbox()
+    # The box counts only majority-opaque pixels as content. Faint residue
+    # (alpha up to ~60) that background removers leave where other objects
+    # (logos, badges) were removed would otherwise hold the box open.
+    bbox = im.getchannel('A').point(lambda a: 255 if a > 128 else 0).getbbox()
     if bbox is None:
         print('image is fully transparent'); sys.exit(1)
     l, t, r, b = bbox

@@ -66,7 +66,10 @@ def main():
     th = opts['threshold']
     if th > 0:
         im.putalpha(im.getchannel('A').point(lambda a: 0 if a <= th else a))
-    bbox = im.getchannel('A').getbbox()
+    # Bounding box counts only majority-opaque pixels as content: faint
+    # residue (alpha up to ~60) left where other objects (logos, badges)
+    # were removed would otherwise hold the box open to the image edge.
+    bbox = im.getchannel('A').point(lambda a: 255 if a > 128 else 0).getbbox()
     if bbox is None:
         print('image is fully transparent after removal'); return 1
     im = im.crop(bbox)
