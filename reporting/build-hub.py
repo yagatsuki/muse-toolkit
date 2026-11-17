@@ -2,8 +2,14 @@
 """レポート集約ページ（トップページ）の生成。
 
 各ゴールの files/report_*.html を ~/workspace/reporting/site/ 配下へ
-種別ごとにコピーし、日付順の一覧 index.html を作る。
+種別ごとにコピーし、日付順の一覧ページを作る。
 site/ フォルダがそのまま公開サイトになる（Cloudflare Pages へデプロイ予定）。
+
+2026-11-17 の分割（ユーザー指示）:
+  - 通常側: index.html（特価／予約・発売／Vehicles選別）
+  - RESTRICTED側: archive/index.html（PlatformA／PlatformD／X）— 別URL
+  - 通常側から RESTRICTED 側へのリンク文は「その他のレポート」とだけ書く
+    （RESTRICTED と分かる文言は通常側に置かない）。
 
 実行:
     ~/workspace/tools/report-venv/bin/python ~/workspace/reporting/build_hub.py
@@ -30,8 +36,81 @@ TYPES = [
     ("x", "X 探索",
      "workspace/goals/goal_f/files"),
 ]
+NORMAL_SUBS = {"bargain", "shop_b"}
+RESTRICTED_SUBS = {"platform_a", "platform_d", "x"}
+ARCHIVE_URL = "archive/"
 
 DATE_RE = re.compile(r"report_(\d{4}-\d{2}-\d{2})(?:_(\d{4}))?\.html$")
+
+PAGE = """<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>%%TITLE%%</title>
+<style>
+  body { font-family: sans-serif; margin: 16px; line-height: 1.6; color: #222; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 16px; border-bottom: 2px solid #ccc; padding-bottom: 4px; }
+  ul { list-style: none; padding-left: 4px; }
+  li { margin: 6px 0; }
+  a { color: #0b5cad; }
+  .empty { color: #888; }
+  .updated { color: #666; font-size: 13px; }
+  nav a { margin-right: 12px; }
+  .peek { opacity: 0.45; transition: opacity 0.3s ease; }
+  section.open .peek { opacity: 1; }
+  .more { max-height: 0; overflow: hidden; transition: max-height 0.45s ease; }
+  .toggle { background: none; border: 1px solid #ccc; border-radius: 6px;
+             padding: 4px 12px; font-size: 14px; color: #0b5cad;
+             cursor: pointer; margin: 2px 0 10px 4px; }
+  .rep-check { width: 16px; height: 16px; vertical-align: -2px; }
+  li.done a { color: #888; text-decoration: line-through; }
+</style>
+</head>
+<body>
+<h1>%%H1%%</h1>
+<p class="updated">全%%TOTAL%%件・更新: %%DATE%%（保持期間30日。古いレポートは自動削除されます）</p>
+<p class="updated">チェックは自動で保存され、どの端末からでも同じ状態が見られます。</p>
+<nav>
+%%NAV%%
+</nav>
+%%TOPLINK%%
+%%SECTIONS%%
+%%FOOTLINK%%
+<script>
+document.querySelectorAll('.toggle').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var box = document.getElementById(btn.dataset.target);
+    var open = box.style.maxHeight && box.style.maxHeight !== '0px';
+    box.style.maxHeight = open ? '0px' : box.scrollHeight + 'px';
+    btn.textContent = open ? btn.dataset.more : btn.dataset.less;
+    btn.closest('section').classList.toggle('open', !open);
+  });
+});
+var CHECK_API = 'https://muse-reports-check.WORKER_DOMAIN';
+fetch(CHECK_API + '/state').then(function (r) { return r.json(); }).then(function (state) {
+  document.querySelectorAll('.rep-check').forEach(function (cb) {
+    var on = !!state[cb.dataset.id];
+    cb.checked = on;
+    cb.closest('li').classList.toggle('done', on);
+    cb.disabled = false;
+  });
+}).catch(function () {});
+document.querySelectorAll('.rep-check').forEach(function (cb) {
+  cb.addEventListener('change', function () {
+    cb.closest('li').classList.toggle('done', cb.checked);
+    fetch(CHECK_API + '/toggle', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: cb.dataset.id, checked: cb.checked })
+    }).catch(function () {});
+  });
+});
+</script>
+</body>
+</html>
+"""
 
 
 def collect(sub, src_dir):
@@ -57,47 +136,42 @@ def collect(sub, src_dir):
     return items
 
 
-def main():
-    os.makedirs(SITE, exist_ok=True)
-    sections = []
-    total = 0
-    for sub, label, rel in TYPES:
-        items = collect(sub, os.path.join(HOME, rel))
-        total += len(items)
-        def li(date, href, cls=""):
-            return (f'      <li{cls}><input type="checkbox" class="rep-check" '
-                    f'data-id="{href}" disabled> '
-                    f'<a href="{href}">{date} のレポート</a></li>')
+def section_html(sub, label, items, link_prefix=""):
+    def li(date, href, cls=""):
+        return (f'      <li{cls}><input type="checkbox" class="rep-check" '
+                f'data-id="{href}" disabled> '
+                f'<a href="{link_prefix}{href}">{date} のレポート</a></li>')
 
-        if not items:
-            body = ('    <ul>\n'
-                    '      <li class="empty">まだレポートがありません</li>\n'
-                    '    </ul>')
-        elif len(items) <= 3:
-            lis = "\n".join(li(d, h) for d, h in items)
-            body = f'    <ul>\n{lis}\n    </ul>'
-        else:
-            head, rest = items[:3], items[3:]
-            lis_head = "\n".join(
-                li(d, h, ' class="peek"' if i == 2 else "")
-                for i, (d, h) in enumerate(head)
-            )
-            lis_rest = "\n".join(li(d, h) for d, h in rest)
-            body = (
-                f'    <ul>\n{lis_head}\n    </ul>\n'
-                f'    <div class="more" id="more-{sub}">\n'
-                f'    <ul>\n{lis_rest}\n    </ul>\n'
-                f'    </div>\n'
-                f'    <button class="toggle" data-target="more-{sub}" '
-                f'data-more="もっと見る（残り{len(rest)}件）" '
-                f'data-less="閉じる">もっと見る（残り{len(rest)}件）</button>'
-            )
-        sections.append(
-            f'  <section id="{sub}">\n'
+    if not items:
+        body = ('    <ul>\n'
+                '      <li class="empty">まだレポートがありません</li>\n'
+                '    </ul>')
+    elif len(items) <= 3:
+        lis = "\n".join(li(d, h) for d, h in items)
+        body = f'    <ul>\n{lis}\n    </ul>'
+    else:
+        head, rest = items[:3], items[3:]
+        lis_head = "\n".join(
+            li(d, h, ' class="peek"' if i == 2 else "")
+            for i, (d, h) in enumerate(head)
+        )
+        lis_rest = "\n".join(li(d, h) for d, h in rest)
+        body = (
+            f'    <ul>\n{lis_head}\n    </ul>\n'
+            f'    <div class="more" id="more-{sub}">\n'
+            f'    <ul>\n{lis_rest}\n    </ul>\n'
+            f'    </div>\n'
+            f'    <button class="toggle" data-target="more-{sub}" '
+            f'data-more="もっと見る（残り{len(rest)}件）" '
+            f'data-less="閉じる">もっと見る（残り{len(rest)}件）</button>'
+        )
+    return (f'  <section id="{sub}">\n'
             f'    <h2>{label}</h2>\n'
             f'{body}\n'
-            f'  </section>'
-        )
+            f'  </section>')
+
+
+def vehicles_section():
     veh_dir = os.path.join(SITE, "vehicles")
     veh_lis_items = []
     if os.path.isdir(veh_dir):
@@ -110,87 +184,68 @@ def main():
     veh_lis_items.append(
         '      <li><a href="vehicles/selection.html">選別ページ（初回収集分）</a></li>')
     veh_lis = "\n".join(veh_lis_items)
+    return (f'  <section id="vehicles">\n'
+            f'    <h2>Vehicles MOD 選別</h2>\n'
+            f'    <ul>\n{veh_lis}\n    </ul>\n'
+            f'  </section>')
+
+
+def render_page(title, h1, total, now, nav, toplink, sections, footlink):
+    html = PAGE
+    for token, value in (
+        ("%%TITLE%%", title), ("%%H1%%", h1), ("%%TOTAL%%", str(total)),
+        ("%%DATE%%", now), ("%%NAV%%", nav), ("%%TOPLINK%%", toplink),
+        ("%%SECTIONS%%", sections), ("%%FOOTLINK%%", footlink),
+    ):
+        html = html.replace(token, value)
+    return html
+
+
+def main():
+    os.makedirs(SITE, exist_ok=True)
+    normal_sections = []
+    restricted_sections = []
+    normal_total = 0
+    restricted_total = 0
+    for sub, label, rel in TYPES:
+        items = collect(sub, os.path.join(HOME, rel))
+        html = section_html(sub, label, items,
+                            "../" if sub in RESTRICTED_SUBS else "")
+        if sub in RESTRICTED_SUBS:
+            restricted_sections.append(html)
+            restricted_total += len(items)
+        else:
+            normal_sections.append(html)
+            normal_total += len(items)
+    normal_sections.append(vehicles_section())
     now = datetime.now().strftime("%Y-%m-%d")
-    html = f"""<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-<title>日次レポート集約</title>
-<style>
-  body {{ font-family: sans-serif; margin: 16px; line-height: 1.6; color: #222; }}
-  h1 {{ font-size: 20px; }}
-  h2 {{ font-size: 16px; border-bottom: 2px solid #ccc; padding-bottom: 4px; }}
-  ul {{ list-style: none; padding-left: 4px; }}
-  li {{ margin: 6px 0; }}
-  a {{ color: #0b5cad; }}
-  .empty {{ color: #888; }}
-  .updated {{ color: #666; font-size: 13px; }}
-  nav a {{ margin-right: 12px; }}
-  .peek {{ opacity: 0.45; transition: opacity 0.3s ease; }}
-  section.open .peek {{ opacity: 1; }}
-  .more {{ max-height: 0; overflow: hidden; transition: max-height 0.45s ease; }}
-  .toggle {{ background: none; border: 1px solid #ccc; border-radius: 6px;
-             padding: 4px 12px; font-size: 14px; color: #0b5cad;
-             cursor: pointer; margin: 2px 0 10px 4px; }}
-  .rep-check {{ width: 16px; height: 16px; vertical-align: -2px; }}
-  li.done a {{ color: #888; text-decoration: line-through; }}
-</style>
-</head>
-<body>
-<h1>日次レポート集約</h1>
-<p class="updated">全{total}件・更新: {now}（保持期間30日。古いレポートは自動削除されます）</p>
-<p class="updated">チェックは自動で保存され、どの端末からでも同じ状態が見られます。</p>
-<nav>
-  <a href="#bargain">特価</a><a href="#shop_b">予約・発売</a><a href="#platform_a">PlatformA</a><a href="#platform_d">PlatformD</a><a href="#x">X</a><a href="#vehicles">Vehicles選別</a>
-</nav>
-{chr(10).join(sections)}
-  <section id="vehicles">
-    <h2>Vehicles MOD 選別</h2>
-    <ul>
-{veh_lis}
-    </ul>
-  </section>
-<script>
-document.querySelectorAll('.toggle').forEach(function (btn) {{
-  btn.addEventListener('click', function () {{
-    var box = document.getElementById(btn.dataset.target);
-    var open = box.style.maxHeight && box.style.maxHeight !== '0px';
-    box.style.maxHeight = open ? '0px' : box.scrollHeight + 'px';
-    btn.textContent = open ? btn.dataset.more : btn.dataset.less;
-    btn.closest('section').classList.toggle('open', !open);
-  }});
-}});
-var CHECK_API = 'https://muse-reports-check.WORKER_DOMAIN';
-fetch(CHECK_API + '/state').then(function (r) {{ return r.json(); }}).then(function (state) {{
-  document.querySelectorAll('.rep-check').forEach(function (cb) {{
-    var on = !!state[cb.dataset.id];
-    cb.checked = on;
-    cb.closest('li').classList.toggle('done', on);
-    cb.disabled = false;
-  }});
-}}).catch(function () {{}});
-document.querySelectorAll('.rep-check').forEach(function (cb) {{
-  cb.addEventListener('change', function () {{
-    cb.closest('li').classList.toggle('done', cb.checked);
-    fetch(CHECK_API + '/toggle', {{ method: 'POST',
-      headers: {{ 'Content-Type': 'application/json' }},
-      body: JSON.stringify({{ id: cb.dataset.id, checked: cb.checked }})
-    }}).catch(function () {{}});
-  }});
-}});
-</script>
-</body>
-</html>
-"""
+
+    normal_nav = ('  <a href="#bargain">特価</a><a href="#shop_b">予約・発売</a>'
+                  '<a href="#vehicles">Vehicles選別</a>'
+                  f'<a href="{ARCHIVE_URL}">その他</a>')
+    normal_foot = f'<p><a href="{ARCHIVE_URL}">その他のレポートはこちら</a></p>'
+    normal_html = render_page(
+        "日次レポート集約", "日次レポート集約", normal_total, now,
+        normal_nav, "", "\n".join(normal_sections), normal_foot)
     with open(os.path.join(SITE, "index.html"), "w", encoding="utf-8") as f:
-        f.write(html)
+        f.write(normal_html)
+
+    os.makedirs(os.path.join(SITE, "archive"), exist_ok=True)
+    restricted_nav = ('  <a href="#platform_a">PlatformA</a><a href="#platform_d">PlatformD</a>'
+                '<a href="#x">X</a><a href="../">集約トップ</a>')
+    back_link = '<p><a href="../">← レポート集約に戻る</a></p>'
+    restricted_html = render_page(
+        "その他のレポート", "その他のレポート", restricted_total, now,
+        restricted_nav, back_link, "\n".join(restricted_sections), back_link)
+    with open(os.path.join(SITE, "archive", "index.html"), "w",
+              encoding="utf-8") as f:
+        f.write(restricted_html)
+
     with open(os.path.join(SITE, "robots.txt"), "w", encoding="utf-8") as f:
         f.write("User-agent: *\nDisallow: /\n")
     with open(os.path.join(SITE, "_headers"), "w", encoding="utf-8") as f:
         f.write("/*\n  X-Robots-Tag: noindex\n")
-    print(f"hub built: {total} reports -> {SITE}/index.html")
+    print(f"hub built: normal={normal_total} archive={restricted_total} -> {SITE}/")
     return 0
 
 

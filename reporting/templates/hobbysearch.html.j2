@@ -3,13 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ title or "SHOP_B 対象 予約・発売チェック" }} - {{ date }}</title>
+<title>{{ title or "対象商品新規予約・発売チェック" }} - {{ date }}</title>
 <style>
   body { font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
          margin: 0; background: #f6f6f4; color: #1c1c1a; }
   .wrap { max-width: 720px; margin: 0 auto; padding: 16px 12px 40px; }
   h1 { font-size: 19px; margin: 8px 0 2px; }
   .date { color: #666; font-size: 13px; margin-bottom: 16px; }
+  .back { font-size: 13px; margin: 4px 0 10px; }
+  .back a { color: #2b6cb0; text-decoration: none; }
+  .back a:hover { text-decoration: underline; }
+  .back.bottom { margin: 18px 0 0; }
   h2 { font-size: 16px; margin: 22px 0 10px; padding-left: 8px;
        border-left: 4px solid #2b6cb0; }
   .card { display: flex; gap: 12px; background: #fff; border: 1px solid #e2e2dc;
@@ -45,7 +49,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>{{ title or "SHOP_B 対象 予約・発売チェック" }}</h1>
+  <div class="back"><a href="https://REPORTS_HOST/">← レポート集約に戻る</a></div>
+  <h1>{{ title or "対象商品新規予約・発売チェック" }}</h1>
   <div class="date">{{ date }}{% if baseline_date %}（前回基準: {{ baseline_date }}）{% endif %}</div>
   {% for sec in sections %}
   <h2>{{ sec.heading }}</h2>
@@ -70,6 +75,7 @@
     <p class="empty">なし</p>
   {% endif %}
   {% endfor %}
+  <div class="back bottom"><a href="https://REPORTS_HOST/">← レポート集約に戻る</a></div>
 </div>
 <div class="lb" id="lb"><button class="lb-close" aria-label="閉じる">×</button><img id="lbimg" alt=""></div>
 <script>

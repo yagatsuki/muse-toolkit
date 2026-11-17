@@ -10,6 +10,10 @@
   .wrap { max-width: 720px; margin: 0 auto; padding: 16px 12px 40px; }
   h1 { font-size: 19px; margin: 8px 0 2px; }
   .date { color: #666; font-size: 13px; margin-bottom: 16px; }
+  .back { font-size: 13px; margin: 4px 0 10px; }
+  .back a { color: #2b6cb0; text-decoration: none; }
+  .back a:hover { text-decoration: underline; }
+  .back.bottom { margin: 18px 0 0; }
   .card { display: flex; gap: 12px; background: #fff; border: 1px solid #e2e2dc;
           border-radius: 10px; padding: 10px; margin-bottom: 12px; }
   .card img { width: 110px; height: 110px; object-fit: contain;
@@ -61,6 +65,7 @@
 </head>
 <body>
 <div class="wrap">
+  <div class="back"><a href="https://REPORTS_HOST/">← レポート集約に戻る</a></div>
   <h1>{{ title or "対象商品 特価・セールチェック" }}</h1>
   <div class="date">{{ date }}（確認時点の価格）</div>
   {% for p in products %}
@@ -87,6 +92,7 @@
   </div>
   {% endfor %}
   <p class="foot">送料込み総額は単品購入時の金額です。ShopE web は送料無料扱いで計算しています。</p>
+  <div class="back bottom"><a href="https://REPORTS_HOST/">← レポート集約に戻る</a></div>
 </div>
 <div class="lb" id="lb"><button class="lb-close" aria-label="閉じる">×</button><img id="lbimg" alt=""></div>
 <script>
