@@ -27,7 +27,7 @@ SITE = os.path.join(HOME, "workspace", "reporting", "site")
 TYPES = [
     ("bargain", "特価チェック（対象商品）",
      "workspace/goals/goal_a/files"),
-    ("shop_b", "予約・発売チェック（SHOP_B）",
+    ("shop_b", "対象商品新規予約・発売チェック",
      "workspace/goals/goal_b/files"),
     ("platform_a", "PlatformA 紹介",
      "workspace/goals/goal_c/files"),
